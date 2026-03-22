@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MathCraft" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <title>MathCraft</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ==================== START SCREEN ==================== -->
+  <div id="screen-start" class="screen active">
+    <div class="stars-bg"></div>
+    <div class="start-content">
+      <div class="logo-block-row">
+        <div class="deco-block block-dirt"></div>
+        <div class="deco-block block-stone"></div>
+        <div class="deco-block block-gold"></div>
+        <div class="deco-block block-diamond"></div>
+      </div>
+      <h1 class="game-title">⛏️ MathCraft</h1>
+      <p class="game-subtitle">Naucz się tabliczki mnożenia,<br/>wydobywając bloki!</p>
+      <div class="start-buttons">
+        <button class="btn btn-primary btn-large" id="btn-play">▶ Graj</button>
+        <button class="btn btn-secondary btn-large" id="btn-discoveries">🏆 Odkrycia</button>
+      </div>
+      <div class="version-tag">v1.0 · PWA · Offline</div>
+    </div>
+  </div>
+
+  <!-- ==================== GAME SCREEN ==================== -->
+  <div id="screen-game" class="screen">
+    <!-- Top HUD -->
+    <div class="game-hud">
+      <div class="hp-display" id="hp-display">
+        <span class="heart" id="heart-1">❤️</span>
+        <span class="heart" id="heart-2">❤️</span>
+        <span class="heart" id="heart-3">❤️</span>
+      </div>
+      <div class="xp-display">
+        <span class="pickaxe-icon" id="pickaxe-icon">🪵</span>
+        <div class="xp-bar-wrap">
+          <div class="xp-bar-fill" id="xp-bar-fill"></div>
+        </div>
+        <span class="xp-label" id="xp-label">0 XP</span>
+      </div>
+      <button class="btn btn-icon" id="btn-back-game" title="Menu">🏠</button>
+    </div>
+
+    <!-- Table Selector -->
+    <div class="table-selector" id="table-selector">
+      <!-- Populated by JS -->
+    </div>
+
+    <!-- Question Area -->
+    <div class="question-bubble" id="question-bubble">
+      <span id="question-text">? × ? = ?</span>
+    </div>
+
+    <!-- Block Stage -->
+    <div class="block-stage">
+      <div class="block-container" id="block-container">
+        <div class="game-block" id="game-block">
+          <div class="block-crack-overlay" id="block-crack"></div>
+        </div>
+        <div class="item-popup" id="item-popup"></div>
+      </div>
+    </div>
+
+    <!-- Answer Display -->
+    <div class="answer-display-wrap">
+      <div class="answer-display" id="answer-display">_</div>
+    </div>
+
+    <!-- Numpad -->
+    <div class="numpad" id="numpad">
+      <button class="numpad-btn" data-val="7">7</button>
+      <button class="numpad-btn" data-val="8">8</button>
+      <button class="numpad-btn" data-val="9">9</button>
+      <button class="numpad-btn" data-val="4">4</button>
+      <button class="numpad-btn" data-val="5">5</button>
+      <button class="numpad-btn" data-val="6">6</button>
+      <button class="numpad-btn" data-val="1">1</button>
+      <button class="numpad-btn" data-val="2">2</button>
+      <button class="numpad-btn" data-val="3">3</button>
+      <button class="numpad-btn numpad-backspace" data-val="backspace">⌫</button>
+      <button class="numpad-btn" data-val="0">0</button>
+      <button class="numpad-btn numpad-check" data-val="check">✓</button>
+    </div>
+
+    <!-- Streak indicator -->
+    <div class="streak-display" id="streak-display">🔥 <span id="streak-count">0</span> z rzędu</div>
+  </div>
+
+  <!-- ==================== DISCOVERIES SCREEN ==================== -->
+  <div id="screen-discoveries" class="screen">
+    <div class="screen-header">
+      <button class="btn btn-icon" id="btn-back-discoveries">←</button>
+      <h2 class="screen-title">🏆 Odkrycia</h2>
+    </div>
+    <div class="discoveries-xp-total">
+      <span>⭐ XP: </span><span id="total-xp-display">0</span>
+    </div>
+    <div class="table-grid" id="table-grid">
+      <!-- Populated by JS -->
+    </div>
+    <div class="mix-record">
+      🏆 Rekord Mix: <span id="mix-record-display">0</span>
+    </div>
+    <div class="pickaxe-progress" id="pickaxe-progress-list">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- ==================== CRAFTING SCREEN ==================== -->
+  <div id="screen-crafting" class="screen">
+    <div class="crafting-title">⚒️ Crafting!</div>
+    <div class="crafting-subtitle" id="crafting-subtitle">Zdobyłeś odznakę!</div>
+    <div class="crafting-grid-wrap">
+      <div class="crafting-grid" id="crafting-grid">
+        <!-- 9 cells populated by JS -->
+      </div>
+      <div class="crafting-arrow">➜</div>
+      <div class="crafting-result" id="crafting-result">
+        <div class="crafting-result-item" id="crafting-result-item"></div>
+      </div>
+    </div>
+    <div class="crafting-item-name" id="crafting-item-name"></div>
+    <button class="btn btn-primary btn-large" id="btn-crafting-continue" style="display:none;">Kontynuuj →</button>
+  </div>
+
+  <!-- ==================== OVERLAY / TOAST ==================== -->
+  <div class="toast" id="toast"></div>
+  <div class="game-over-overlay" id="game-over-overlay" style="display:none;">
+    <div class="game-over-box">
+      <div class="game-over-text">💀 Ups!</div>
+      <div class="game-over-sub">Spróbuj jeszcze raz!</div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
