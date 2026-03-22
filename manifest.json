@@ -1,0 +1,25 @@
+{
+  "name": "MathCraft",
+  "short_name": "MathCraft",
+  "description": "Learn multiplication tables in a Minecraft-style educational game!",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1a1a2e",
+  "background_color": "#16213e",
+  "lang": "pl",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%231a1a2e'/%3E%3Crect x='24' y='24' width='60' height='60' fill='%238B6040'/%3E%3Crect x='84' y='24' width='60' height='60' fill='%237a7a7a'/%3E%3Crect x='24' y='84' width='60' height='60' fill='%237a7a7a'/%3E%3Crect x='84' y='84' width='60' height='60' fill='%23FFD700'/%3E%3Crect x='54' y='144' width='12' height='36' fill='%238B6040'/%3E%3Rect x='42' y='132' width='36' height='18' fill='%23a0a0a0'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%231a1a2e'/%3E%3Crect x='64' y='64' width='160' height='160' fill='%238B6040'/%3E%3Crect x='224' y='64' width='160' height='160' fill='%237a7a7a'/%3E%3Crect x='64' y='224' width='160' height='160' fill='%237a7a7a'/%3E%3Crect x='224' y='224' width='160' height='160' fill='%23FFD700'/%3E%3Crect x='144' y='384' width='32' height='96' fill='%238B6040'/%3E%3Crect x='112' y='352' width='96' height='48' fill='%23a0a0a0'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
