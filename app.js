@@ -330,7 +330,7 @@ function makeQuestion(table) {
   for (let b = 1; b <= 10; b++) {
     const key = table + 'x' + b;
     const s = progress.stats[key] || { correct: 0, total: 0 };
-    const acc = s.total === 0 ? 1 : s.correct / s.total;
+    const acc = s.total === 0 ? 0.5 : s.correct / s.total;
     const weight = acc < 0.8 ? 2 : 1;
     for (let w = 0; w < weight; w++) pool.push(b);
   }
@@ -652,7 +652,7 @@ function renderDiscoveries() {
       }
       if (total > 0) {
         const acc = document.createElement('div');
-        acc.style.cssText = 'font-size:0.4rem;color:#ffe;margin-top:2px;';
+        acc.className = 'cell-accuracy';
         acc.textContent = Math.round(correct / total * 100) + '%';
         cell.appendChild(acc);
       }
