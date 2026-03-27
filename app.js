@@ -106,7 +106,10 @@ function playBadgeSound() {
 }
 
 // ── Constants ──────────────────────────────────────────────
-const STORAGE_KEY = 'mathcraft_progress';
+const DB_NAME    = 'mathcraft_db';
+const DB_VERSION = 1;
+const DB_STORE   = 'progress';
+const LEGACY_KEY = 'mathcraft_progress';
 
 const PICKAXES = [
   { id: 'wooden',  emoji: '🪵', name: 'Drewniana', tables: [2,5,10], xpReq: 0   },
@@ -114,6 +117,14 @@ const PICKAXES = [
   { id: 'iron',    emoji: '🔩', name: 'Żelazna',   tables: [6,8],   xpReq: 150 },
   { id: 'gold',    emoji: '✨', name: 'Złota',     tables: [7,9],   xpReq: 300 },
   { id: 'diamond', emoji: '💎', name: 'Diamentowa',tables: ['mix'], xpReq: 500 },
+];
+
+const AXES = [
+  { id: 'wooden',  emoji: '🪓', name: 'Drewniana', tables: [2,5,10], xpReq: 0   },
+  { id: 'stone',   emoji: '🪓', name: 'Kamienna',  tables: [3,4],   xpReq: 50  },
+  { id: 'iron',    emoji: '🪓', name: 'Żelazna',   tables: [6,8],   xpReq: 150 },
+  { id: 'gold',    emoji: '🪓', name: 'Złota',     tables: [7,9],   xpReq: 300 },
+  { id: 'diamond', emoji: '🪓', name: 'Diamentowa',tables: ['mix'], xpReq: 500 },
 ];
 
 const BADGES = {
@@ -126,6 +137,18 @@ const BADGES = {
   8:  { name: 'Zbroja',            emoji: '🛡️⚔️' },
   9:  { name: 'Elytra',            emoji: '🦋' },
   10: { name: 'Diamentowy miecz',  emoji: '💎' },
+};
+
+const DIVISION_BADGES = {
+  2:  { name: 'Wiadro',    emoji: '🪣' },
+  3:  { name: 'Wędka',     emoji: '🎣' },
+  4:  { name: 'Łódka',     emoji: '⛵' },
+  5:  { name: 'Kompas',    emoji: '🧭' },
+  6:  { name: 'Zegar',     emoji: '⏰' },
+  7:  { name: 'Latarnia',  emoji: '🏮' },
+  8:  { name: 'Luneta',    emoji: '🔭' },
+  9:  { name: 'Jabłko',    emoji: '🍎' },
+  10: { name: 'Klucz',     emoji: '🗝️' },
 };
 
 const BLOCK_TYPES = {
@@ -160,30 +183,104 @@ const STREAK_BADGE     = 10;
 const MAX_HP           = 3;
 const MAX_ANSWER_LEN   = 3;  // max product is 10×10=100 (3 digits)
 
-// ── Progress (loaded from localStorage) ────────────────────
-let progress = {
+// ── Mode & Progress ─────────────────────────────────────────
+let currentGameMode = 'multiply'; // 'multiply' | 'divide'
+let discoveriesMode = 'multiply';
+
+const makeDefaultProgress = () => ({
   xp: 0,
   stats: {},
   badges: [],
   unlockedPickaxes: ['wooden'],
   mixRecord: 0,
   consecutivePerTable: {},
+});
+
+const progressData = {
+  multiply: makeDefaultProgress(),
+  divide:   makeDefaultProgress(),
 };
 
-function loadProgress() {
+let progress = progressData.multiply;
+
+function setGameMode(mode) {
+  currentGameMode = mode;
+  progress = progressData[mode];
+}
+
+// ── IndexedDB ──────────────────────────────────────────────
+let _db = null;
+
+function openDB() {
+  if (_db) return Promise.resolve(_db);
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(DB_STORE)) {
+        db.createObjectStore(DB_STORE, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => { _db = e.target.result; resolve(_db); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbGet(key) {
+  return openDB().then(db => new Promise((resolve, reject) => {
+    const req = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  }));
+}
+
+function dbPut(data) {
+  return openDB().then(db => new Promise((resolve, reject) => {
+    const req = db.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).put(data);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  }));
+}
+
+async function loadAllProgress() {
+  // Migrate old single-mode localStorage data to IndexedDB
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      progress = Object.assign(progress, parsed);
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const legacyData = JSON.parse(legacy);
+      const existing = await dbGet('multiply');
+      if (!existing) {
+        await dbPut({ id: 'multiply', ...legacyData });
+      }
+      localStorage.removeItem(LEGACY_KEY);
     }
-  } catch (e) {}
+  } catch(e) {}
+
+  // Load multiply progress
+  try {
+    const mp = await dbGet('multiply');
+    if (mp) {
+      const { id, ...data } = mp;
+      progressData.multiply = Object.assign(makeDefaultProgress(), data);
+    }
+  } catch(e) {}
+
+  // Load divide progress
+  try {
+    const dp = await dbGet('divide');
+    if (dp) {
+      const { id, ...data } = dp;
+      progressData.divide = Object.assign(makeDefaultProgress(), data);
+    }
+  } catch(e) {}
 }
 
 function saveProgress() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-  } catch (e) {}
+  const mode = currentGameMode;
+  const data = progressData[mode];
+  dbPut({ id: mode, ...data }).catch(() => {
+    try { localStorage.setItem('mathcraft_' + mode, JSON.stringify(data)); } catch(e) {}
+  });
 }
 
 // ── Game State ─────────────────────────────────────────────
@@ -226,8 +323,17 @@ function showToast(msg, duration) {
 }
 
 // ── Start Screen ───────────────────────────────────────────
-$('btn-play').addEventListener('click', () => {
-  getAudioCtx(); // init audio on gesture
+$('btn-play-multiply').addEventListener('click', () => {
+  getAudioCtx();
+  setGameMode('multiply');
+  checkPickaxeUnlocks();
+  showScreen('game');
+  initGameScreen();
+});
+
+$('btn-play-divide').addEventListener('click', () => {
+  getAudioCtx();
+  setGameMode('divide');
   checkPickaxeUnlocks();
   showScreen('game');
   initGameScreen();
@@ -235,6 +341,7 @@ $('btn-play').addEventListener('click', () => {
 
 $('btn-discoveries').addEventListener('click', () => {
   getAudioCtx();
+  discoveriesMode = currentGameMode;
   showScreen('discoveries');
   renderDiscoveries();
 });
@@ -242,33 +349,41 @@ $('btn-discoveries').addEventListener('click', () => {
 // ── Game Screen Init ───────────────────────────────────────
 function initGameScreen() {
   state.hp = MAX_HP;
+  state.mixStreak = 0;
   renderHP();
   renderXPBar();
   buildTableSelector();
   setTable(getDefaultTable());
+  $('mode-indicator').textContent = currentGameMode === 'divide' ? '🪓 Dzielenie' : '⛏️ Mnożenie';
 }
 
 function getDefaultTable() {
-  // return first available table for best unlocked pickaxe
+  // return first available table for best unlocked tool
   const pk = getBestPickaxe();
   const tables = pk.tables;
   if (tables[0] === 'mix') return 'mix';
   return tables[0];
 }
 
+function getCurrentTools() {
+  return currentGameMode === 'multiply' ? PICKAXES : AXES;
+}
+
 function getBestPickaxe() {
-  let best = PICKAXES[0];
-  for (const pk of PICKAXES) {
-    if (progress.unlockedPickaxes.includes(pk.id)) best = pk;
+  const tools = getCurrentTools();
+  let best = tools[0];
+  for (const tk of tools) {
+    if (progress.unlockedPickaxes.includes(tk.id)) best = tk;
   }
   return best;
 }
 
 function getAvailableTables() {
+  const tools = getCurrentTools();
   let tables = [];
-  for (const pk of PICKAXES) {
-    if (progress.unlockedPickaxes.includes(pk.id)) {
-      pk.tables.forEach(t => { if (!tables.includes(t)) tables.push(t); });
+  for (const tk of tools) {
+    if (progress.unlockedPickaxes.includes(tk.id)) {
+      tk.tables.forEach(t => { if (!tables.includes(t)) tables.push(t); });
     }
   }
   return tables;
@@ -279,11 +394,12 @@ function buildTableSelector() {
   sel.innerHTML = '';
   const available = getAvailableTables();
   const allTables = [2,3,4,5,6,7,8,9,10,'mix'];
+  const prefix = currentGameMode === 'divide' ? '÷' : '×';
   allTables.forEach(t => {
     const btn = document.createElement('button');
     btn.className = 'table-btn';
     btn.dataset.table = t;
-    btn.textContent = t === 'mix' ? '💎Mix' : '×' + t;
+    btn.textContent = t === 'mix' ? '💎Mix' : prefix + t;
     if (!available.includes(t)) {
       btn.classList.add('locked');
       btn.setAttribute('disabled', 'true');
@@ -307,21 +423,30 @@ function setTable(t) {
   const block = $('game-block');
   block.className = 'game-block ' + (BLOCK_TYPES[t] || 'block-dirt');
   block.innerHTML = '<div class="block-crack-overlay" id="block-crack"></div>';
+  updateStreakDisplay();
   newQuestion();
 }
 
 // ── Question Logic ─────────────────────────────────────────
 function newQuestion() {
+  let tbl;
   if (state.table === 'mix') {
     const tables = [2,3,4,5,6,7,8,9,10];
-    const t = tables[Math.floor(Math.random() * tables.length)];
-    state.question = makeQuestion(t);
+    tbl = tables[Math.floor(Math.random() * tables.length)];
   } else {
-    state.question = makeQuestion(state.table);
+    tbl = state.table;
+  }
+  if (currentGameMode === 'divide') {
+    state.question = makeDivisionQuestion(tbl);
+    $('question-text').textContent =
+      state.question.dividend + ' ÷ ' + state.question.divisor + ' = ?';
+  } else {
+    state.question = makeQuestion(tbl);
+    $('question-text').textContent =
+      state.question.a + ' × ' + state.question.b + ' = ?';
   }
   state.answer = '';
   updateAnswerDisplay();
-  $('question-text').textContent = state.question.a + ' × ' + state.question.b + ' = ?';
 }
 
 function makeQuestion(table) {
@@ -336,6 +461,22 @@ function makeQuestion(table) {
   }
   const b = pool[Math.floor(Math.random() * pool.length)];
   return { a: table, b, answer: table * b };
+}
+
+function makeDivisionQuestion(divisor) {
+  // Division as inverse of multiplication: (divisor × b) ÷ divisor = b
+  // Stat keys use the same "divisor x b" format as multiplication because
+  // the stats live in separate objects (progressData.divide vs .multiply).
+  const pool = [];
+  for (let b = 1; b <= 10; b++) {
+    const key = divisor + 'x' + b;
+    const s = progress.stats[key] || { correct: 0, total: 0 };
+    const acc = s.total === 0 ? 0.5 : s.correct / s.total;
+    const weight = acc < 0.8 ? 2 : 1;
+    for (let w = 0; w < weight; w++) pool.push(b);
+  }
+  const b = pool[Math.floor(Math.random() * pool.length)];
+  return { dividend: divisor * b, divisor, b, answer: b };
 }
 
 function recordStat(key, correct) {
@@ -373,7 +514,9 @@ function submitAnswer() {
   if (!state.question) return;
   const typed = parseInt(state.answer, 10);
   const correct = typed === state.question.answer;
-  const key = state.question.a + 'x' + state.question.b;
+  const key = currentGameMode === 'divide'
+    ? state.question.divisor + 'x' + state.question.b
+    : state.question.a + 'x' + state.question.b;
   recordStat(key, correct);
 
   if (correct) {
@@ -544,13 +687,14 @@ function renderHP() {
 
 function renderXPBar() {
   $('xp-label').textContent = progress.xp + ' XP';
+  const tools = getCurrentTools();
   const best = getBestPickaxe();
-  const pkIdx = PICKAXES.indexOf(best);
+  const pkIdx = tools.indexOf(best);
   $('pickaxe-icon').textContent = best.emoji;
 
   let pct = 100;
-  if (pkIdx < PICKAXES.length - 1) {
-    const next = PICKAXES[pkIdx + 1];
+  if (pkIdx < tools.length - 1) {
+    const next = tools[pkIdx + 1];
     const prev = best.xpReq;
     const range = next.xpReq - prev;
     pct = Math.min(100, Math.max(0, ((progress.xp - prev) / range) * 100));
@@ -566,13 +710,14 @@ function updateStreakDisplay() {
 }
 
 function checkPickaxeUnlocks() {
+  const tools = getCurrentTools();
   let unlocked = false;
-  PICKAXES.forEach(pk => {
-    if (!progress.unlockedPickaxes.includes(pk.id) && progress.xp >= pk.xpReq) {
-      progress.unlockedPickaxes.push(pk.id);
+  tools.forEach(tk => {
+    if (!progress.unlockedPickaxes.includes(tk.id) && progress.xp >= tk.xpReq) {
+      progress.unlockedPickaxes.push(tk.id);
       unlocked = true;
       playLevelUpSound();
-      showToast('🎉 Odblokowałeś: ' + pk.emoji + ' ' + pk.name + '!', 2500);
+      showToast('🎉 Odblokowałeś: ' + tk.emoji + ' ' + tk.name + '!', 2500);
     }
   });
   if (unlocked) buildTableSelector();
@@ -608,19 +753,46 @@ $('btn-back-game').addEventListener('click', () => {
 // ── Discoveries Screen ─────────────────────────────────────
 $('btn-back-discoveries').addEventListener('click', () => showScreen('start'));
 
+$('tab-multiply').addEventListener('click', () => {
+  discoveriesMode = 'multiply';
+  renderDiscoveries();
+});
+
+$('tab-divide').addEventListener('click', () => {
+  discoveriesMode = 'divide';
+  renderDiscoveries();
+});
+
 function renderDiscoveries() {
-  $('total-xp-display').textContent = progress.xp;
-  $('mix-record-display').textContent = progress.mixRecord;
+  const p = progressData[discoveriesMode];
+  const tools = discoveriesMode === 'multiply' ? PICKAXES : AXES;
+  const badges = discoveriesMode === 'multiply' ? BADGES : DIVISION_BADGES;
+  const prefix = discoveriesMode === 'divide' ? '÷' : '×';
+
+  // Tab highlights
+  $('tab-multiply').classList.toggle('active', discoveriesMode === 'multiply');
+  $('tab-divide').classList.toggle('active', discoveriesMode === 'divide');
+
+  $('total-xp-display').textContent = p.xp;
+  $('mix-record-display').textContent = p.mixRecord;
+
+  // Compute available tables for this discoveries mode
+  let availableTables = [];
+  for (const tk of tools) {
+    if (p.unlockedPickaxes.includes(tk.id)) {
+      tk.tables.forEach(t => { if (!availableTables.includes(t)) availableTables.push(t); });
+    }
+  }
+  const available = availableTables.filter(t => t !== 'mix');
 
   const grid = $('table-grid');
   grid.innerHTML = '';
-  const available = getAvailableTables().filter(t => t !== 'mix');
   const allNum = [2,3,4,5,6,7,8,9,10];
 
   allNum.forEach(t => {
     const cell = document.createElement('div');
     cell.className = 'table-cell';
-    const isMastered = progress.badges.includes(t);
+    const isMastered = p.badges.includes(t);
     const isUnlocked = available.includes(t);
 
     if (isMastered) {
@@ -631,23 +803,23 @@ function renderDiscoveries() {
       cell.appendChild(star);
       const icon = document.createElement('div');
       icon.className = 'cell-icon';
-      icon.textContent = BADGES[t] ? BADGES[t].emoji : '🏆';
+      icon.textContent = badges[t] ? badges[t].emoji : '🏆';
       cell.appendChild(icon);
       const num = document.createElement('div');
       num.className = 'cell-num';
-      num.textContent = '×' + t;
+      num.textContent = prefix + t;
       cell.appendChild(num);
     } else if (isUnlocked) {
       cell.classList.add('unlocked');
       cell.classList.add(BLOCK_TYPES[t] || 'block-stone');
       const num = document.createElement('div');
       num.className = 'cell-num';
-      num.textContent = '×' + t;
+      num.textContent = prefix + t;
       cell.appendChild(num);
       // accuracy
       let correct = 0, total = 0;
       for (let b = 1; b <= 10; b++) {
-        const s = progress.stats[t + 'x' + b];
+        const s = p.stats[t + 'x' + b];
         if (s) { correct += s.correct; total += s.total; }
       }
       if (total > 0) {
@@ -664,23 +836,23 @@ function renderDiscoveries() {
       cell.appendChild(lk);
       const num = document.createElement('div');
       num.className = 'cell-num';
-      num.textContent = '×' + t;
+      num.textContent = prefix + t;
       cell.appendChild(num);
     }
     grid.appendChild(cell);
   });
 
-  // Pickaxe progress list
+  // Tool progress list
   const list = $('pickaxe-progress-list');
   list.innerHTML = '';
-  PICKAXES.forEach(pk => {
+  tools.forEach(tk => {
     const row = document.createElement('div');
     row.className = 'pickaxe-row';
-    if (progress.unlockedPickaxes.includes(pk.id)) row.classList.add('unlocked');
+    if (p.unlockedPickaxes.includes(tk.id)) row.classList.add('unlocked');
     row.innerHTML =
-      '<span class="pk-icon">' + pk.emoji + '</span>' +
-      '<span class="pk-name">' + pk.name + '</span>' +
-      '<span class="pk-req">' + (pk.xpReq === 0 ? 'Start' : pk.xpReq + ' XP') + '</span>';
+      '<span class="pk-icon">' + tk.emoji + '</span>' +
+      '<span class="pk-name">' + tk.name + '</span>' +
+      '<span class="pk-req">' + (tk.xpReq === 0 ? 'Start' : tk.xpReq + ' XP') + '</span>';
     list.appendChild(row);
   });
 }
@@ -688,10 +860,12 @@ function renderDiscoveries() {
 // ── Crafting Screen ────────────────────────────────────────
 function showCraftingScreen(tableNum) {
   playBadgeSound();
-  const badge = BADGES[tableNum];
+  const badges = currentGameMode === 'divide' ? DIVISION_BADGES : BADGES;
+  const badge = badges[tableNum];
   if (!badge) return;
 
-  $('crafting-subtitle').textContent = 'Odznaka × ' + tableNum + ' zdobyta!';
+  const prefix = currentGameMode === 'divide' ? '÷' : '×';
+  $('crafting-subtitle').textContent = 'Odznaka ' + prefix + ' ' + tableNum + ' zdobyta!';
   $('crafting-item-name').textContent = badge.emoji + '  ' + badge.name;
   $('crafting-result-item').textContent = badge.emoji;
   $('crafting-result-item').classList.remove('visible');
@@ -700,7 +874,9 @@ function showCraftingScreen(tableNum) {
   // Fill crafting grid with themed emojis
   const grid = $('crafting-grid');
   grid.innerHTML = '';
-  const mats = getCraftingMaterials(tableNum);
+  const mats = currentGameMode === 'divide'
+    ? getCraftingMaterialsDivide(tableNum)
+    : getCraftingMaterials(tableNum);
 
   for (let i = 0; i < 9; i++) {
     const cell = document.createElement('div');
@@ -743,15 +919,31 @@ function getCraftingMaterials(tableNum) {
   return maps[tableNum] || ['⭐','⭐','⭐','⭐','⭐','⭐','⭐','⭐','⭐'];
 }
 
+function getCraftingMaterialsDivide(tableNum) {
+  // Returns 9 emojis for division badge crafting (tool/utility themed)
+  const maps = {
+    2:  ['🪣','🪣','🪣','🪣','🪣','🪣','🪣','🪣','🪣'],
+    3:  ['🪵','',  '🪵','🪵','🪢','🪵','',  '🪢',''],
+    4:  ['🪵','🪵','🪵','🪵','',  '🪵','🪵','🪵','🪵'],
+    5:  ['🔩','🧭','',  '',  '🔩','',  '',  '',  ''],
+    6:  ['',  '🔩','',  '',  '🔩','',  '',  '🔩',''],
+    7:  ['',  '',  '',  '🪵','🏮','🪵','🪵','🪵','🪵'],
+    8:  ['🔩','🔩','🔩','🔩','',  '🔩','🔩','🔩','🔩'],
+    9:  ['🍎','🍎','🍎','🍎','🍎','🍎','🍎','🍎','🍎'],
+    10: ['🗝️','🗝️','🗝️','',  '🗝️','',  '',  '🗝️',''],
+  };
+  return maps[tableNum] || ['⭐','⭐','⭐','⭐','⭐','⭐','⭐','⭐','⭐'];
+}
+
 $('btn-crafting-continue').addEventListener('click', () => {
   showScreen('game');
   initGameScreen();
 });
 
 // ── Boot ───────────────────────────────────────────────────
-function boot() {
-  loadProgress();
-  checkPickaxeUnlocks();
+async function boot() {
+  await loadAllProgress();
+  setGameMode('multiply');
   showScreen('start');
 }
 

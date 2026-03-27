@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'mathcraft-v1';
+const CACHE_NAME = 'mathcraft-v2';
 const ASSETS = [
   './index.html',
   './style.css',

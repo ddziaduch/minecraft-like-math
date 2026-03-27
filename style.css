@@ -197,6 +197,17 @@ html, body {
   box-shadow: 0 4px 0 #333;
 }
 
+/* Extends .btn-primary for the divide mode button */
+.btn-divide {
+  background: #5a2d82;
+  border-top: 4px solid #8b52c0;
+  border-left: 4px solid #7a40b0;
+  border-right: 4px solid #3a1a60;
+  border-bottom: 4px solid #2d1450;
+  text-shadow: 1px 1px 0 #1a0a3a;
+  box-shadow: 0 4px 0 #1a0a3a;
+}
+
 .btn-large {
   font-size: 0.85rem;
   padding: 16px 24px;
@@ -274,6 +285,19 @@ html, body {
   box-shadow: 0 0 6px rgba(255,215,0,0.6);
 }
 .xp-label { font-size: 0.45rem; color: var(--gold); white-space: nowrap; flex-shrink: 0; }
+
+/* ---- Mode indicator ---- */
+.mode-indicator {
+  width: 100%;
+  max-width: 520px;
+  text-align: center;
+  font-size: 0.5rem;
+  color: rgba(255,255,255,0.6);
+  background: rgba(0,0,0,0.35);
+  padding: 4px 0;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
 
 /* ---- Table Selector ---- */
 .table-selector {
@@ -597,6 +621,36 @@ html, body {
   padding: 0 12px 24px;
   gap: 12px;
 }
+
+/* ---- Discoveries tabs ---- */
+.discoveries-tabs {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 520px;
+  padding: 4px 0 0;
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  font-family: var(--font);
+  font-size: 0.55rem;
+  flex: 1;
+  padding: 10px 8px;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.5);
+  border: 2px solid rgba(255,255,255,0.12);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
+}
+.tab-btn.active {
+  background: rgba(255,215,0,0.15);
+  color: var(--gold);
+  border-color: rgba(255,215,0,0.4);
+  text-shadow: 1px 1px 0 #000;
+}
+.tab-btn:active { filter: brightness(0.85); }
 
 .screen-header {
   width: 100%;

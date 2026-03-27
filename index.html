@@ -27,9 +27,10 @@
         <div class="deco-block block-diamond"></div>
       </div>
       <h1 class="game-title">⛏️ MathCraft</h1>
-      <p class="game-subtitle">Naucz się tabliczki mnożenia,<br/>wydobywając bloki!</p>
+      <p class="game-subtitle">Naucz się matematyki,<br/>wydobywając bloki!</p>
       <div class="start-buttons">
-        <button class="btn btn-primary btn-large" id="btn-play">▶ Graj</button>
+        <button class="btn btn-primary btn-large" id="btn-play-multiply">Mnożenie ⛏️</button>
+        <button class="btn btn-primary btn-large btn-divide" id="btn-play-divide">Dzielenie 🪓</button>
         <button class="btn btn-secondary btn-large" id="btn-discoveries">🏆 Odkrycia</button>
       </div>
       <div class="version-tag">v1.0 · PWA · Offline</div>
@@ -54,6 +55,7 @@
       </div>
       <button class="btn btn-icon" id="btn-back-game" title="Menu">🏠</button>
     </div>
+    <div class="mode-indicator" id="mode-indicator">⛏️ Mnożenie</div>
 
     <!-- Table Selector -->
     <div class="table-selector" id="table-selector">
@@ -105,6 +107,10 @@
     <div class="screen-header">
       <button class="btn btn-icon" id="btn-back-discoveries">←</button>
       <h2 class="screen-title">🏆 Odkrycia</h2>
+    </div>
+    <div class="discoveries-tabs">
+      <button class="tab-btn active" id="tab-multiply">⛏️ Mnożenie</button>
+      <button class="tab-btn" id="tab-divide">🪓 Dzielenie</button>
     </div>
     <div class="discoveries-xp-total">
       <span>⭐ XP: </span><span id="total-xp-display">0</span>
